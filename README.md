@@ -96,8 +96,8 @@ dsh-task-timer/
 ```
 
 `npm publish` 只发布 `package.json` 里 `files` 白名单列出的文件，加上 npm 强制包含的
-`package.json` / `README.md` / `LICENSE`，一共 7 个：`lib/index.js`、`lib/client.js`、
-`cordis.patch.yml`、`locale/{zh,en}.json`、`package.json`、`README.md`。`install.ps1`、
+`package.json` / `README.md` / `LICENSE`，一共 8 个：`lib/index.js`、`lib/client.js`、
+`cordis.patch.yml`、`locale/{zh,en}.json`、`package.json`、`README.md`、`LICENSE`。`install.ps1`、
 `market/`、`test/`、`node_modules/` 都不进包。
 
 ## 安装
@@ -107,6 +107,12 @@ dsh-task-timer/
 
 ```powershell
 & "<dsh>" plugin --profile desktop add dsh-task-timer
+```
+
+没有 npm 账号也能装——直接从公开仓库的某个提交装（`#` 后面是完整 SHA，市场里的 git 源就是这样拼的）：
+
+```powershell
+& "<dsh>" plugin --profile desktop add "git+https://gitee.com/sunxiaochuan2588000/dsh-task-timer.git#<40 位 SHA>"
 ```
 
 调试本地源码时用 `link:` 装法，改动即时可见，不必重装；`file:`（不加 `link:` 前缀）则会把包

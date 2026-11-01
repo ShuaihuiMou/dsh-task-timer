@@ -11,9 +11,24 @@ DSH 目前**没有官方插件市场**：没有中心化的提交入口，也没
 本目录的 [`index.json`](index.json) 就是第 2 步的产物，已用运行时内置的
 `@deepseek-ai/dsh-plugin-market-index` 校验通过。
 
-## 1. 发布 npm 包
+## 1. 发布来源：npm 或 git
 
-`package.json` 已经具备市场所需字段（`engines.dsh`、`keywords`，且已移除 `private`）。
+索引里的 `versions[].source` 支持两种来源，二选一即可：
+
+**A. git 源（本仓库索引当前用的就是这条）**——不需要 npm 账号，公开仓库能匿名 clone 就行：
+
+```json
+"source": {
+  "type": "git",
+  "url": "https://gitee.com/sunxiaochuan2588000/dsh-task-timer",
+  "commit": "<40 位小写 commit SHA>"
+}
+```
+
+市场会拼成 `git+<url>.git#<commit>` 交给 pnpm 安装（`marketInstallTarget`），所以 `commit` 必须是
+**已经推上去、且包含完整插件代码**的提交；发新版就是推代码 → 把 `commit` 换成新的 SHA → 推索引。
+
+**B. npm 源**——`package.json` 已具备市场所需字段（`engines.dsh`、`keywords`，且没有 `private`）：
 
 ```bash
 cd dsh-task-timer
@@ -21,6 +36,11 @@ npm adduser                 # 或 npm login
 npm publish --access public
 ```
 
+```json
+"source": { "type": "npm" }
+```
+
+- 只有真的发布成功后才能写 `type: "npm"`，否则装到一半会 `ERR_PNPM_FETCH_404`。
 - `engines.dsh` 是市场判断兼容性的唯一依据；本包声明 `>=0.2.1-rc.5`，与当前运行时不冲突。
 - 本地安装（`link:`）也会走同一套兼容性检查，声明范围必须包含当前 dsh 版本，否则会被拦下。
 
@@ -42,9 +62,13 @@ npm publish --access public
 
 ```json
 {
-  "version": "1.0.1",
-  "publishTimestamp": 1793535268,
-  "source": { "type": "npm" },
+  "version": "1.3.1",
+  "publishTimestamp": 1793542000,
+  "source": {
+    "type": "git",
+    "url": "https://gitee.com/sunxiaochuan2588000/dsh-task-timer",
+    "commit": "<该版本对应的 40 位小写 SHA>"
+  },
   "engines": { "dsh": ">=0.2.1-rc.5" }
 }
 ```
