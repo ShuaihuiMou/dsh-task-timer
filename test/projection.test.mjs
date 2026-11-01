@@ -25,8 +25,8 @@ assert.equal(name, "task-timer", "plugin name is stable");
 assert.equal(captured.key, "taskTimer", "projection key is stable");
 assert.equal(
 	captured.stateVersion,
-	4,
-	"v1 (llmMs/toolMs), v2 (bare createdAt) and v3 (activity end) rows must refold instead of restoring"
+	5,
+	"v1 (llmMs/toolMs), v2 (bare createdAt), v3 (activity end) and v4 (answer wait) rows must refold instead of restoring"
 );
 
 const { init, apply: fold, wire } = captured;
@@ -36,8 +36,8 @@ const T0 = HEADER.createdAt;
 const state = init(HEADER, 0);
 assert.deepEqual(
 	state,
-	{ createdAt: HEADER.createdAt, lastActivityAt: HEADER.createdAt, awaitMs: 0, awaitCalls: {} },
-	"init takes the creation instant from the header and starts the cursor there"
+	{ createdAt: HEADER.createdAt, startedAt: 0, lastActivityAt: HEADER.createdAt, awaitMs: 0, awaitCalls: {} },
+	"init takes the creation instant from the header, leaves the content start open, and starts the cursor there"
 );
 captured.stateSchema.parse(state);
 assert.doesNotThrow(() => captured.stateSchema.parse(state), "state schema accepts the initial state");
@@ -52,6 +52,20 @@ assert.equal(forked.createdAt, 1_800_000_000_000, "a seeded prefix never rewrite
 // backwards into a negative age.
 const replayedPrefix = fold(forked, { type: "assistant/message", time: T0 + 500, data: {} });
 assert.equal(replayedPrefix, forked, "an event older than the header leaves the cursor alone");
+assert.equal(replayedPrefix.startedAt, 0, "an ancestor event never pins this conversation's start");
+
+// A Session record is not a conversation. The desktop shell opens one at
+// launch and the first message may arrive hours later — a real Session created
+// at 19:55 and first used at 23:41 read 3h46m, for a conversation minutes old.
+// The age therefore starts at the first event that carried content.
+const idle = init(HEADER, 0);
+const configured = fold(idle, { type: "permission/preset", time: T0 + 13_860_000, data: {} });
+assert.equal(configured, idle, "session configuration is not conversation content");
+const firstMessage = fold(configured, { type: "user/message", time: T0 + 13_869_000, data: { turn: 0 } });
+assert.equal(firstMessage.createdAt, T0, "the record's creation instant is still reported");
+assert.equal(firstMessage.startedAt, T0 + 13_869_000, "the first message starts the age, not the record");
+const laterMessage = fold(firstMessage, { type: "assistant/message", time: T0 + 13_900_000, data: {} });
+assert.equal(laterMessage.startedAt, T0 + 13_869_000, "the start is pinned once and never moves");
 
 // Conversation events move the cursor; the newest one wins and the state
 // reference changes exactly once per advance.
@@ -70,6 +84,7 @@ for (const event of events) {
 	assert.notEqual(next, cursor, `${event.type} advances the cursor`);
 	assert.equal(next.lastActivityAt, event.time, `${event.type} stamps its own time`);
 	assert.equal(next.createdAt, T0, `${event.type} never moves the creation instant`);
+	assert.equal(next.startedAt, T0 + 1, `${event.type} leaves the pinned start alone`);
 	cursor = next;
 }
 assert.equal(cursor.lastActivityAt, T0 + 5002, "the last turn end is the newest end");
@@ -101,8 +116,8 @@ const view = wire.view(cursor);
 captured.wire.viewSchema.parse(view);
 assert.deepEqual(
 	view,
-	{ createdAt: T0, lastActivityAt: T0 + 5002, awaitMs: 0 },
-	"the wire view carries both ends of the span and the deducted wait"
+	{ createdAt: T0, startedAt: T0 + 1, lastActivityAt: T0 + 5002, awaitMs: 0 },
+	"the wire view carries the span's two ends, the content start and the deducted wait"
 );
 assert.equal(wire.view(cursor), view, "an unchanged state reuses its view reference");
 assert.notEqual(wire.view(init(HEADER, 0)), view, "a different cell gets its own view reference");
@@ -215,5 +230,5 @@ assert.doesNotThrow(
 );
 
 console.log(
-	"projection: createdAt + lastActivityAt + awaitMs published, cursor monotonic, waits paired, view references stable"
+	"projection: createdAt + startedAt + lastActivityAt + awaitMs published, cursor monotonic, waits paired, view references stable"
 );

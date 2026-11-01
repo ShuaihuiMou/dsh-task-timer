@@ -347,6 +347,24 @@ assert.match(idleHtml, /10分0秒/, "an idle conversation reads to its last mess
 assert.doesNotMatch(idleHtml, /30分0秒/, "idle time after the last message never accrues");
 assert.doesNotMatch(idleHtml, /20分0秒/, "the gap before the cap is not counted either");
 
+// The Session record is not the conversation. The shell can open a record hours
+// before anyone types in it — a real one was created at 19:55 and first used at
+// 23:41, and measuring from the record made a minutes-old conversation read
+// 3h50m. When the host pins `startedAt` to the first message, the age runs from
+// there; without it (an older host), the record's instant is the fallback.
+useStateCalls = 0;
+const lateStartHtml = renderToStaticMarkup(
+	react.createElement(registration, {
+		useProjection: (key) =>
+			key === "taskTimer"
+				? { createdAt: CREATED_AT - 13_560_000, startedAt: CREATED_AT, lastActivityAt: NOW }
+				: projections[key],
+		t
+	})
+);
+assert.match(lateStartHtml, /30分0秒/, "the age runs from the first message, not the record");
+assert.doesNotMatch(lateStartHtml, /4小时16分/, "the idle hours before the first message are not counted");
+
 // The dialog names the deduction, so the smaller pill explains itself instead of
 // quietly disagreeing with the dashboard's activity numbers.
 useStateCalls = 0;

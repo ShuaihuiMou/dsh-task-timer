@@ -36,11 +36,14 @@ DeepSeek Harness 插件：在对话最下方的仪表盘（composer dock）里�
 日志里分辨不出来，因此仍按工具时间计——这是已知边界。
 
 
-弹窗里的**创建对话至今**是另一个口径：`最后一次对话活动 - 对话创建时间`，是会话本身的墙钟
+弹窗里的**创建对话至今**是另一个口径：`最后一次对话活动 - 对话内容起点`，是对话本身的墙钟
 跨度，包含挂机和用户思考，但**两端都钉在事件上**：
 
-- 起点是会话 header 的 `createdAt`（不是第一条事件的时间，fork 出来的会话不会被祖先日志
-  拉长）；
+- 起点是**第一条承载对话内容的事件**（首条消息/首个 turn），不是会话 header 的
+  `createdAt`——桌面壳会在打开时就建好 Session 记录，第一条消息可能几小时后才来，按记录
+  起算会让几分钟大的对话读出 3 小时（实测一条 19:55 建记录、23:41 才首用的会话读出
+  3h46m）。日志里还没有内容事件时退回 `createdAt`；fork 继承的祖先日志时间都早于本
+  header，同样不会把起点拉长；
 - 终点是日志里**最新一条推进对话的事件**（消息、turn/step 边界、工具调用对），不是
   `Date.now()`。因此一条对话没人再动、也没有新消息时，这个数**停住不动**，不会随着你挂着
   窗口而一秒一秒往上涨；一旦有了新消息，终点前移到那一刻，跨度自然把中间的间隔算进去。
@@ -51,15 +54,18 @@ DeepSeek Harness 插件：在对话最下方的仪表盘（composer dock）里�
 ## 工作原理
 
 - **宿主侧 `lib/index.js`**：通过 `ctx.sessionProjections.register(...)` 注册一个极简的
-  `taskTimer` 投影，发布三个端点——`createdAt`（建会话那一刻）、`lastActivityAt`
+  `taskTimer` 投影，发布四个端点——`createdAt`（建会话那一刻）、`startedAt`（第一条对话
+  内容事件的时间，0 表示还没有）、`lastActivityAt`
   （日志里最新一条推进对话的事件时间）、`awaitMs`（被问到答之间的累计跨度）。
-  `createdAt` 没有任何事件能改变；`lastActivityAt`
+  `createdAt` 没有任何事件能改变；`startedAt` 由第一条白名单活动事件钉住一次、之后不动；
+  `lastActivityAt`
   只接受白名单事件（`user/developer/system/message`、`turn/start|end`、`step/start|end`、
   `assistant/attempt|message`、`tool/call|result`），改名、改设置、归档这些元数据事件不算
   活动，否则给会话改个名就能把空闲的时钟重新拨起来。取值点仍是 `init(header, ...)`：这是
   框架唯一把 header 交给投影的地方。
   - 游标单调：`!(at > lastActivityAt)` 直接丢弃回放里乱序/缺时钟的事件；游标初值就是
-    `createdAt`，所以 fork 继承来的那段日志（时间都早于本 header）不会把跨度拖成负数。
+    `createdAt`，所以 fork 继承来的那段日志（时间都早于本 header）不会把跨度拖成负数，
+    也不会抢走 `startedAt`（起点只接受不早于 `createdAt` 的事件）。
   - 等待表 `awaitCalls` 只在内存/检查点里维护（`{callId: 打开时刻}`），**不进 wire**：
     客户端需要的只是累计结果 `awaitMs`。
 - **浏览器侧 `lib/client.js`**：向 `conversation.composer.dock`（对话底部仪表盘）注入
@@ -74,7 +80,7 @@ DeepSeek Harness 插件：在对话最下方的仪表盘（composer dock）里�
     略小，却没人解释差在哪。
   - 弹窗里的这一行**打开时立刻刷新一次**，打开期间每秒走一格；收起后在后台每分钟
     轮询一次（`OPEN_TICK_MS = 1e3` / `IDLE_TICK_MS = 6e4`），不常驻秒级定时器。
-    渲染值取 `min(now, lastActivityAt) - createdAt`：一旦追上终点（对话已空闲），
+    渲染值取 `min(now, lastActivityAt) - (startedAt || createdAt)`：一旦追上终点（对话已空闲），
     连定时器都不再启动，等新事件改写 `lastActivityAt` 再自然恢复。
   - pill 与弹窗标题前都带 primitives 的时钟图标（`IconClockOutlineRegular`，14px、与文字
     间隔 `6px`），和旁边的 `activity`（仪表盘）、`usage`（数据库）两个 pill 一致；侧边栏
@@ -174,11 +180,12 @@ npm 上还没有这个包（尚未发布），等发布后 `add dsh-task-timer` 
 宿主侧投影契约已用真实 zod 跑通（`test/projection.test.mjs`），输出如下：
 
 ```
-projection: createdAt + lastActivityAt + awaitMs published, cursor monotonic, waits paired, view references stable
+projection: createdAt + startedAt + lastActivityAt + awaitMs published, cursor monotonic, waits paired, view references stable
 ```
 
 它断言的是：`init(header)` 原样取 `header.createdAt` 并把游标起在同一个点（fork 的
-`inheritedEventCount` 不参与）、只有对话类事件推进 `lastActivityAt` 且乱序/缺时钟不会回退、
+`inheritedEventCount` 不参与）、起点由第一条内容事件钉住且祖先日志抢不走、只有对话类事件
+推进 `lastActivityAt` 且乱序/缺时钟不会回退、
 `session/title` 等元数据事件不动游标、`wire.view` 对同一 cell 复用同一个 view 引用（注册表靠
 这个引用比较抑制推送）、view 里不再出现 `llmMs`/`toolMs`/`workingMs`。
 
