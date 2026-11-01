@@ -29,7 +29,7 @@
       },
       "description": {
         "en": "A clock-led pill in the conversation dashboard showing the session's agent working time (the dashboard's own model plus tool time, less the time the agent spent waiting for your answers), with the span from the session's creation to its last activity and the excluded answer wait when opened — capped there, so an idle conversation stops counting (the dialog reuses the built-in turns/steps stylesheet), plus the total time used across all conversations above the sidebar account row.",
-        "zh": "在对话底部仪表盘以「时钟 + 工作时长」展示本会话的 agent 工作时长（仪表盘已有的模型时间 + 工具时间，再扣掉等你回答的那段等待），点开可看创建对话至今（只算到最后一条消息生成结束，空闲不累加）与已扣除的等待时长，弹窗与 X轮X步 共用同一套样式；并在侧边栏用户名上方显示全部对话的合计使用时长（X小时X分 · 对话总时长，不可选中）。"
+        "zh": "在对话底部仪表盘以「时钟 + 工作时长」展示本会话的 agent 工作时长（仪表盘已有的模型时间 + 工具时间，再扣掉等你回答的那段等待），点开可看会话时长（自首条消息起算、只算到最近一条消息生成结束，空闲不累加；不再从桌面壳提前建会话记录的时刻起算）与已扣除的等待时长，弹窗与 X轮X步 共用同一套样式；并在侧边栏用户名上方显示全部对话的合计使用时长（X小时X分 · 对话总时长，不可选中）。"
       },
       "metadata": {
         "category": "ui",
@@ -47,6 +47,18 @@
         "sortKeys": {}
       },
       "versions": [
+        {
+          "version": "1.4.2",
+          "publishTimestamp": 1793549000,
+          "source": {
+            "type": "git",
+            "url": "https://gitee.com/sunxiaochuan2588000/dsh-task-timer",
+            "commit": "6575c82439184591fdc8998406f2d6ca89cadac1"
+          },
+          "engines": {
+            "dsh": ">=0.2.1-rc.5"
+          }
+        },
         {
           "version": "1.4.1",
           "publishTimestamp": 1793545106,
