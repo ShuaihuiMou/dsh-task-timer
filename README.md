@@ -113,8 +113,8 @@ dsh-task-timer/
 │   ├── index.js        # 宿主侧：注册 taskTimer 投影（createdAt + lastActivityAt + awaitMs）
 │   └── client.js       # 浏览器侧：工作时长 pill + 创建对话至今行 + 侧边栏使用时长行
 ├── locale/
-│   ├── zh.json         # 插件管理器显示元数据（中文）
-│   └── en.json         # 插件管理器显示元数据（英文）
+│   ├── zh.json         # 插件页显示元数据（中文），必须是 {"meta":{"title","description"}}
+│   └── en.json         # 插件页显示元数据（英文），同上结构
 ├── market/
 │   ├── index.json      # format 1 索引（托管到 http(s) 后供「发现」读取，不随包发布）
 │   └── PUBLISH.zh.md   # 上架流程说明
@@ -127,6 +127,11 @@ dsh-task-timer/
 `package.json` / `README.md` / `LICENSE`，一共 8 个：`lib/index.js`、`lib/client.js`、
 `cordis.patch.yml`、`locale/{zh,en}.json`、`package.json`、`README.md`、`LICENSE`。`install.ps1`、
 `market/`、`test/`、`node_modules/` 都不进包。
+
+`locale/*.json` 的顶层必须是 `meta` 对象：插件页（设置 → 插件、插件管理器、发现）的标题与说明由
+宿主 `readPluginMeta()` 读取 `locale/<语言>.json` 里的 `meta.title` / `meta.description`，缺这两项就
+退回 `package.json` 的 `name` / `description`（于是中文界面显示英文说明）。文件名必须是语言 id
+（`en`、`zh`），`en.json` 必须存在，否则整个 `locale/` 目录都不会被扫描。
 
 ## 安装
 
