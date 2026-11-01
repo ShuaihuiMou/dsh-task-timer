@@ -1,0 +1,59 @@
+{
+  "name": "dsh-task-timer",
+  "version": "1.3.0",
+  "description": "DeepSeek Harness plugin: a text-only per-session working-time pill whose dialog shows the span from session creation to its last activity (capped, so idle time never accrues), plus the all-conversation total above the sidebar account row",
+  "type": "module",
+  "engines": {
+    "dsh": ">=0.2.1-rc.5"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "timer",
+    "working-time",
+    "tps",
+    "tokens"
+  ],
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-ui-chat",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "cordis.patch.yml",
+    "locale/*.json"
+  ],
+  "author": "牟浪松",
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitee.com/sunxiaochuan2588000/dsh-task-timer.git"
+  },
+  "homepage": "https://gitee.com/sunxiaochuan2588000/dsh-task-timer#readme",
+  "bugs": {
+    "url": "https://gitee.com/sunxiaochuan2588000/dsh-task-timer/issues"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "zod": "4.4.3"
+  }
+}

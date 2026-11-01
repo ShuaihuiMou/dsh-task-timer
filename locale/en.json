@@ -1,0 +1,4 @@
+{
+  "title": "Task Timer",
+  "description": "Show the session's agent working time (the dashboard's own model plus tool time) as a clock-led pill in the conversation dashboard, with the span from the session's creation to its last activity when opened — capped there, so an idle conversation stops counting (the dialog shares the built-in turns/steps stylesheet), plus the total time used across all conversations above the sidebar account row as \"1h29m · Conversation total\"."
+}

@@ -1,0 +1,62 @@
+{
+  "format": 1,
+  "title": {
+    "en": "Local DSH plugins",
+    "zh": "本地 DSH 插件源"
+  },
+  "description": {
+    "en": "A self-hosted index of DeepSeek Harness plugins.",
+    "zh": "自建的 DeepSeek Harness 插件索引。"
+  },
+  "metadata": {
+    "categories": {
+      "ui": {
+        "title": {
+          "en": "Interface",
+          "zh": "界面"
+        }
+      }
+    },
+    "labels": {},
+    "sortKeys": {}
+  },
+  "plugins": [
+    {
+      "name": "dsh-task-timer",
+      "title": {
+        "en": "Task Timer",
+        "zh": "任务计时"
+      },
+      "description": {
+        "en": "A clock-led pill in the conversation dashboard showing the session's agent working time (the dashboard's own model plus tool time), with the span from the session's creation to its last activity when opened — capped there, so an idle conversation stops counting (the dialog reuses the built-in turns/steps stylesheet), plus the total time used across all conversations above the sidebar account row.",
+        "zh": "在对话底部仪表盘以「时钟 + 工作时长」展示本会话的 agent 工作时长（直接取仪表盘已有的模型时间 + 工具时间），点开可看创建对话至今（只算到最后一条消息生成结束，空闲不累加），弹窗与 X轮X步 共用同一套样式；并在侧边栏用户名上方显示全部对话的合计使用时长（X小时X分 · 对话总时长，不可选中）。"
+      },
+      "metadata": {
+        "category": "ui",
+        "keywords": [
+          "timer",
+          "working-time",
+          "conversation-age",
+          "tps",
+          "tokens",
+          "dashboard",
+          "sidebar"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "1.3.0",
+          "publishTimestamp": 1793541190,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.1-rc.5"
+          }
+        }
+      ]
+    }
+  ]
+}

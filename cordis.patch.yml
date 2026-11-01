@@ -1,0 +1,5 @@
+# dsh-task-timer bundle patch: contributes one plugin entry when this package
+# is registered as a profile bundle.
+- insert:
+    - id: task-timer
+      name: dsh-task-timer
