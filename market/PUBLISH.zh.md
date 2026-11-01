@@ -29,8 +29,11 @@ npm publish --access public
 `index.json` 需要放在一个 **http/https** URL 上，URL 不能带 query、fragment 或凭据。
 可行做法：
 
-- Gitee / GitHub 公开仓库的 raw 链接，例如本仓库的
-  `https://gitee.com/sunxiaochuan2588000/dsh-task-timer/raw/main/market/index.json`
+- 公开仓库的 raw 链接，但**必须是直接 200 的地址**：市场抓取器用 `redirect: "error"`
+  取索引（`dsh-plugin-market/lib/index.js` 的 `fetchIndex`），遇到 302 直接判失败。
+  Gitee 的 `https://gitee.com/<owner>/<repo>/raw/<ref>/<path>` 是 302，不能用；本仓库实测可用的直连地址是：
+  `https://raw.giteeusercontent.com/sunxiaochuan2588000/dsh-task-timer/raw/main/market/index.json`
+- GitHub 的 `raw.githubusercontent.com` 本身就是 200，无此问题
 - Cloudflare Pages / Vercel 等静态托管
 - 本机临时调试：`npx http-server market -p 8080` →
   `http://127.0.0.1:8080/index.json`（DSH 关掉后就失效）
