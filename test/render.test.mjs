@@ -141,6 +141,7 @@ const t = (key, params = {}) => {
 		title: () => "工作时长",
 		total: () => `${params.duration} · 对话总时长`,
 		conversationAge: () => "创建对话至今",
+		awaitExcluded: () => "已扣除等待回答",
 		seconds: () => `${params.seconds}秒`,
 		minutes: () => `${params.minutes}分${params.seconds}秒`,
 		hours: () => `${params.hours}小时`,
@@ -230,6 +231,47 @@ assert.match(label(5_340_000), /1小时29分 · 工作时长/, "past the hour th
 assert.doesNotMatch(label(5_340_000), /89分/, "minutes never overflow past 59");
 assert.doesNotMatch(label(5_340_000), /秒/, "no seconds once hours are shown");
 
+// Time spent waiting on an answer is not work. `sessionStats` bills a question's
+// whole call→result span as tool time, so the host publishes that share as
+// `taskTimer.awaitMs` and the pill subtracts it before formatting.
+const billed = (stats, timer) =>
+	renderToStaticMarkup(
+		react.createElement(registration, {
+			useProjection: (key) => (key === "sessionStats" ? stats : timer),
+			t
+		})
+	);
+
+assert.match(
+	billed(
+		{ llmMs: 120_000, toolMs: 420_000 },
+		{ createdAt: CREATED_AT, lastActivityAt: NOW, awaitMs: 420_000 }
+	),
+	/2分0秒 · 工作时长/,
+	"an answered question's wait comes off the reading, leaving only the model time"
+);
+assert.doesNotMatch(
+	billed(
+		{ llmMs: 120_000, toolMs: 420_000 },
+		{ createdAt: CREATED_AT, lastActivityAt: NOW, awaitMs: 420_000 }
+	),
+	/9分0秒/,
+	"the billed wait never shows up as work"
+);
+assert.match(
+	billed({ llmMs: 120_000, toolMs: 42_000 }, { createdAt: CREATED_AT, lastActivityAt: NOW }),
+	/2分42秒 · 工作时长/,
+	"a host still serving the previous view shape charges the old number rather than NaN"
+);
+assert.equal(
+	billed(
+		{ llmMs: 120_000, toolMs: 42_000 },
+		{ createdAt: CREATED_AT, lastActivityAt: NOW, awaitMs: 200_000 }
+	),
+	"",
+	"a reading that a long wait would push below zero shows no pill instead of a negative time"
+);
+
 // Open state: reload the bundle with `useState` pinned open so the dialog body
 // actually renders. The portal is flattened to inline markup, since
 // react-dom/server refuses portals.
@@ -304,6 +346,26 @@ assert.match(idleHtml, /创建对话至今/);
 assert.match(idleHtml, /10分0秒/, "an idle conversation reads to its last message, not to now");
 assert.doesNotMatch(idleHtml, /30分0秒/, "idle time after the last message never accrues");
 assert.doesNotMatch(idleHtml, /20分0秒/, "the gap before the cap is not counted either");
+
+// The dialog names the deduction, so the smaller pill explains itself instead of
+// quietly disagreeing with the dashboard's activity numbers.
+useStateCalls = 0;
+const deductedHtml = renderToStaticMarkup(
+	react.createElement(registration, {
+		useProjection: (key) =>
+			key === "sessionStats"
+				? { llmMs: 120_000, toolMs: 420_000 }
+				: key === "taskTimer"
+					? { createdAt: CREATED_AT, lastActivityAt: NOW, awaitMs: 420_000 }
+					: void 0,
+		t
+	})
+);
+assert.match(deductedHtml, /2分0秒 · 工作时长/, "the trigger carries the narrowed reading");
+assert.match(deductedHtml, /已扣除等待回答/, "the dialog explains what came off that reading");
+assert.match(deductedHtml, /7分0秒/, "the deducted span is shown at the full value");
+assert.doesNotMatch(deductedHtml, /9分0秒/, "the billed span is never offered as the total");
+assert.equal((deductedHtml.match(/<dt/g) ?? []).length, 2, "the deduction is a second detail row");
 
 // Background cadence: a live second hand while open, one poll a minute while
 // closed. SSR cannot observe timers, so the shipped bundle is the evidence.
@@ -387,6 +449,56 @@ assert.match(
 	),
 	/1小时35分 · 对话总时长/,
 	"the live projection wins over the cached list value"
+);
+
+// A row's answer wait comes off before the rows are summed. It belongs to that
+// one conversation, so it cannot be separated out of the total afterwards.
+const listWithWait = (waitRow) =>
+	listState({
+		byId: {
+			a: { id: "a", projectionValues: { sessionStats: { llmMs: 3_600_000, toolMs: 0 } } },
+			b: {
+				id: "b",
+				projectionValues: {
+					sessionStats: { llmMs: 1_200_000, toolMs: 600_000 },
+					taskTimer: { createdAt: 0, lastActivityAt: 0, awaitMs: waitRow }
+				}
+			},
+			c: {
+				id: "c",
+				origin: "subagent",
+				projectionValues: { sessionStats: { llmMs: 60_000, toolMs: 0 } }
+			}
+		}
+	});
+
+assert.match(
+	renderTotal(listWithWait(600_000)),
+	/1小时20分 · 对话总时长/,
+	"one conversation's answer wait is deducted from its own share"
+);
+assert.match(
+	renderTotal(listState()),
+	/1小时30分 · 对话总时长/,
+	"a row with no recorded wait is summed unchanged"
+);
+
+// A live row's wait overrides the colder snapshot the same way its stats do.
+assert.match(
+	renderTotal(
+		listState({
+			projectionsBySession: {
+				b: {
+					values: {
+						sessionStats: { llmMs: 1_200_000, toolMs: 600_000 },
+						taskTimer: { createdAt: 0, lastActivityAt: 0, awaitMs: 1_800_000 }
+					}
+				}
+			}
+		})
+	),
+	/1小时 · 对话总时长/,
+	"a live row's wait is read from the live projection, not the checkpoint"
 );
 
 assert.equal(renderTotal(listState(), false), "", "the collapsed rail has no room for the caption");
