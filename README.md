@@ -117,7 +117,8 @@ dsh-task-timer/
 │   └── en.json         # 插件页显示元数据（英文），同上结构
 ├── market/
 │   ├── index.json      # format 1 索引（托管到 http(s) 后供「发现」读取，不随包发布）
-│   └── PUBLISH.zh.md   # 上架流程说明
+│   ├── PUBLISH.zh.md   # 上架 / 自建索引源说明
+│   └── PUBLISH-GITHUB.zh.md # 推到 GitHub 并进 dshmarketplace.dev 的流程
 └── test/
     ├── projection.test.mjs # 投影契约测试（init 取 header、游标单调、state/view 引用稳定）
     └── render.test.mjs     # 客户端 pill 渲染冒烟测试（SSR，断言样式、结构与创建对话至今）
@@ -135,24 +136,27 @@ dsh-task-timer/
 
 ## 安装
 
-从 npm 安装（`<dsh>` 指 DSH 安装目录下 `resources/runtime/cli/bin/dsh.cmd`，若已加进 PATH
+从公开仓库安装（`<dsh>` 指 DSH 安装目录下 `resources/runtime/cli/bin/dsh.cmd`，若已加进 PATH
 则直接写 `dsh`）：
 
 ```powershell
-& "<dsh>" plugin --profile desktop add dsh-task-timer
+& "<dsh>" plugin --profile desktop add github:ShuaihuiMou/dsh-task-timer
 ```
 
-没有 npm 账号也能装——直接从公开仓库的某个提交装（`#` 后面是完整 SHA，市场里的 git 源就是这样拼的）：
+GitHub 与 Gitee 是同一份代码，直连 Gitee 等价：
 
 ```powershell
-& "<dsh>" plugin --profile desktop add "git+https://gitee.com/sunxiaochuan2588000/dsh-task-timer.git#<40 位 SHA>"
+& "<dsh>" plugin --profile desktop add "git+https://gitee.com/sunxiaochuan2588000/dsh-task-timer.git"
 ```
 
-GitHub 上也有同一份代码，`github:` 简写等价（同样建议锁到具体提交，别跟分支漂移）：
+想锁死版本就在 `#` 后跟完整 40 位提交 SHA——插件市场的 git 源、本仓库 `market/index.json` 都是这么锁的，
+下面这条锁的是 1.4.1：
 
 ```powershell
-& "<dsh>" plugin --profile desktop add "github:ShuaihuiMou/dsh-task-timer#<40 位 SHA>"
+& "<dsh>" plugin --profile desktop add "github:ShuaihuiMou/dsh-task-timer#d9d7fc0e2c5f49f71e671927e8d416e24390d3a8"
 ```
+
+npm 上还没有这个包（尚未发布），等发布后 `add dsh-task-timer` 也等价。
 
 调试本地源码时用 `link:` 装法，改动即时可见，不必重装；`file:`（不加 `link:` 前缀）则会把包
 拷贝进 profile。在插件目录双击/运行 `install.ps1`，或手动执行：
