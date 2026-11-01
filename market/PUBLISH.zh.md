@@ -1,15 +1,40 @@
 # 把 dsh-task-timer 上架到 DSH 插件市场
 
-DSH 目前**没有官方插件市场**：没有中心化的提交入口，也没有审核流程。所谓「插件市场」是
-**索引源（index source）** 模型——插件页的「发现」标签页只列出用户自己添加的索引 URL。
-所以「上架」= 做三件事：
+DSH 官方**没有**中心化商店，但社区有一个事实上的主市场：**dshmarketplace.dev**。它的目录页收录
+15,545 条，同时对外发布一份 format 1 索引 `https://dshmarketplace.dev/market/index.json`——
+本机 profile 的 `plugin-market.indexes` 里配的就是它。所以「上架」有两条路，不互斥：
 
-1. 把包发布到 npm（或一个公开的 Git 仓库）；
-2. 在某个 http(s) 地址上托管一份 **format 1** 的索引 JSON；
-3. 让使用者在「插件 → 发现 → 添加索引源」里填那个 URL。
+- **路 A：进 dshmarketplace.dev**——目录页和 DSH 的「发现」页都从它来，门槛见第 0 节；
+- **路 B：自建索引源**——自己托管一份 format 1 索引，使用者手动添加 URL。完全自主、无审核，
+  本目录的 [`index.json`](index.json) 就是产物，已用运行时内置的
+  `@deepseek-ai/dsh-plugin-market-index` 校验通过。
 
-本目录的 [`index.json`](index.json) 就是第 2 步的产物，已用运行时内置的
-`@deepseek-ai/dsh-plugin-market-index` 校验通过。
+路 B 负责「今天就能装」，路 A 负责「别人搜得到」。
+
+## 0. 主市场 dshmarketplace.dev 的准入规则
+
+规则由站点自己在 <https://dshmarketplace.dev/api-docs> 和 <https://dshmarketplace.dev/submit> 公布，
+以下均已逐条核过：
+
+**只认 GitHub 仓库。** 目录同步 GitHub 的 `dsh-plugin` topic 和社区 registry `awesome-dsh-plugin`，
+安装命令形如 `dsh plugin --profile desktop add github:owner/repo` 或 npm 包名。全量 15,545 条里来源
+只有 github/npm，**没有一条 Gitee 仓库**；手动提交表单也只接受 GitHub 仓库 URL。
+
+**三条准入门槛**（缺一不可）：
+
+1. 声明自己是 DSH 插件：`package.json` 里有 `dsh` 清单、或依赖 `@deepseek-ai/*`/Cordis、
+   或存在 `cordis.patch.yml`；
+2. **≥ 10 个 commit**（沿用 awesome-dsh-plugin 的标准，用来把脚手架和真作品区分开）；
+3. 仓库有 description（空描述的仓库只是个链接，会被丢掉）。
+
+本包满足第 1 条（`dsh` 清单 + `cordis.patch.yml`）和第 3 条；commit 数需要自然累积到 10。
+
+**每条安装命令都在一次性容器里实装过**（`installCheck`）才上架，并记录验证所用的 dsh 版本
+（`installCheckDsh`）——dsh 0.2 起会拒绝为其它版本构建的插件，所以 `engines.dsh` 必须覆盖它实际跑的那个版本。
+
+**想出现在 DSH 的「发现」页，必须有 npm 包。** `/market/index.json` 实测 1728 条**全部**是
+`source.type: "npm"`；站点的口径是「从源码装的插件不在里面，因为源码安装要先批准构建，发现页做不到」。
+没有 npm 账号时，GitHub 仓库能让插件进站点目录页、也能用 `github:owner/repo` 装，但进不了「发现」页。
 
 ## 1. 发布来源：npm 或 git
 
