@@ -148,6 +148,12 @@ dsh-task-timer/
 & "<dsh>" plugin --profile desktop add "git+https://gitee.com/sunxiaochuan2588000/dsh-task-timer.git#<40 位 SHA>"
 ```
 
+GitHub 上也有同一份代码，`github:` 简写等价（同样建议锁到具体提交，别跟分支漂移）：
+
+```powershell
+& "<dsh>" plugin --profile desktop add "github:ShuaihuiMou/dsh-task-timer#<40 位 SHA>"
+```
+
 调试本地源码时用 `link:` 装法，改动即时可见，不必重装；`file:`（不加 `link:` 前缀）则会把包
 拷贝进 profile。在插件目录双击/运行 `install.ps1`，或手动执行：
 
