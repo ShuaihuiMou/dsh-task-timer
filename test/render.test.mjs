@@ -80,6 +80,36 @@ assert.deepEqual(exportsOfBundle.inject, ["slots", "locale"], "inject lists slot
 let registration = null;
 let totalRegistration = null;
 const translations = { zh: null, en: null };
+
+/**
+ * ui-workspace's own dictionary, stood in for the namespace the plugin binds to
+ * label session rows. Swapped to `en` by the age-suffix scenario below to prove
+ * the wording follows the app locale rather than a hard-coded suffix.
+ */
+const WORKSPACE_ZH = {
+	"time.now": "刚刚",
+	"time.minutes": "{n}分钟",
+	"time.hours": "{n}小时",
+	"time.days": "{n}天",
+	"time.months": "{n}个月",
+	"time.years": "{n}年",
+	"time.ago": "{t}前"
+};
+const WORKSPACE_EN = {
+	"time.now": "now",
+	"time.minutes": "{n}min",
+	"time.hours": "{n}h",
+	"time.days": "{n}d",
+	"time.months": "{n}mo",
+	"time.years": "{n}y",
+	"time.ago": "{t} ago"
+};
+let workspaceDict = WORKSPACE_ZH;
+const workspaceCopy = (key, params = {}) => {
+	const template = workspaceDict[key];
+	if (template === void 0) return key;
+	return template.replace(/\{(\w+)\}/g, (match, name) => (name in params ? String(params[name]) : match));
+};
 const ctx = {
 	effect(run) {
 		return run();
@@ -90,6 +120,10 @@ const ctx = {
 			translations.zh = dictionaries.zh;
 			translations.en = dictionaries.en;
 			return { dispose() {} };
+		},
+		bind(namespace) {
+			assert.equal(namespace, "workspace", "the row labels come from ui-workspace's namespace");
+			return (key, params) => workspaceCopy(key, params);
 		}
 	},
 	slots: {
@@ -573,5 +607,147 @@ assert.match(classHtml, /backdrop-filter:none/, "the backdrop stays out of the c
 assert.doesNotMatch(classHtml, /specific-menu/, "the translucent menu film is not painted here");
 assert.match(classHtml, /创建对话至今/, "the single detail row survives the swap");
 assert.match(classHtml, /30分0秒/);
+
+// Session rows: the bare distance on the right of every row ("55分钟") reads as
+// the time the conversation ran, not as when it last moved. ui-workspace owns
+// that cell and its copy, with no slot to extend and no second dictionary
+// allowed for its namespace, so the plugin re-labels the rendered text — and
+// the wording comes from ui-workspace's own `time.ago` template, so the row and
+// its hover card (`55分钟前`) agree.
+const ELEMENT = 1;
+const TEXT = 3;
+const matchesSelector = (node, selector) =>
+	selector === '[class$="_time"]' ? node.className.endsWith("_time") : node.className.includes("_sessionRow");
+
+function fakeText(value) {
+	const node = { nodeType: TEXT, nodeValue: value, parentNode: null };
+	Object.defineProperty(node, "nextSibling", {
+		get() {
+			const siblings = node.parentNode?.childNodes ?? [];
+			const at = siblings.indexOf(node);
+			return at < 0 || at + 1 >= siblings.length ? null : siblings[at + 1];
+		}
+	});
+	return node;
+}
+
+function fakeElement(className, childNodes = []) {
+	const el = {
+		nodeType: ELEMENT,
+		className,
+		childNodes: [],
+		parentNode: null,
+		get firstChild() {
+			return el.childNodes[0] ?? null;
+		},
+		matches: (selector) => matchesSelector(el, selector),
+		closest(selector) {
+			let node = el;
+			while (node !== null && node !== void 0 && node.nodeType === ELEMENT) {
+				if (matchesSelector(node, selector)) return node;
+				node = node.parentNode;
+			}
+			return null;
+		},
+		querySelectorAll(selector) {
+			const found = [];
+			const walk = (node) => {
+				for (const child of node.childNodes ?? []) {
+					if (child.nodeType !== ELEMENT) continue;
+					if (matchesSelector(child, selector)) found.push(child);
+					walk(child);
+				}
+			};
+			walk(el);
+			return found;
+		}
+	};
+	for (const child of childNodes) {
+		el.childNodes.push(child);
+		child.parentNode = el;
+	}
+	return el;
+}
+
+/** One session row: title, then the trailing cell that carries the age. */
+function fakeRow(label) {
+	const text = fakeText(label);
+	const cell = fakeElement("wnFoaW_time", [text]);
+	const row = fakeElement("wnFoaW_sessionRow", [fakeElement("wnFoaW_title", [fakeText("标题")]), cell]);
+	return { row, cell, text };
+}
+
+const observers = [];
+globalThis.MutationObserver = class {
+	constructor(callback) {
+		this.callback = callback;
+		observers.push(this);
+	}
+	observe(target, options) {
+		this.target = target;
+		this.options = options;
+	}
+	disconnect() {
+		this.disconnected = true;
+	}
+	deliver(records) {
+		this.callback(records);
+	}
+};
+
+const existing = fakeRow("55分钟");
+const untouchedNow = fakeRow("刚刚");
+const untouchedPending = fakeRow("待回答");
+const chatClock = fakeElement("hSzSIW_time", [fakeText("55分钟")]);
+globalThis.document.body = fakeElement("body", [existing.row, untouchedNow.row, untouchedPending.row, chatClock]);
+
+const ageCtx = {
+	effect: (run) => run(),
+	locale: {
+		register: () => ({ dispose() {} }),
+		bind: () => (key, params) => workspaceCopy(key, params)
+	},
+	slots: { inject() {}, register: () => ({ dispose() {} }) }
+};
+
+exportsOfBundle.apply(ageCtx);
+
+assert.equal(existing.text.nodeValue, "55分钟前", "a bare distance on screen at load becomes an age");
+assert.equal(untouchedNow.text.nodeValue, "刚刚", "the now bucket already reads as an instant");
+assert.equal(untouchedPending.text.nodeValue, "待回答", "a pending-status word in the same cell is left alone");
+assert.equal(chatClock.firstChild.nodeValue, "55分钟", "the same class on a chat message is out of reach");
+
+const ageObserver = observers.at(-1);
+assert.deepEqual(
+	{ childList: ageObserver.options.childList, subtree: ageObserver.options.subtree, characterData: ageObserver.options.characterData },
+	{ childList: true, subtree: true, characterData: true },
+	"the observer watches rows being added and their labels being rewritten"
+);
+
+// Rows that arrive after the plugin loaded are labelled as they mount.
+const later = fakeRow("2小时");
+ageObserver.deliver([{ type: "childList", addedNodes: [later.row] }]);
+assert.equal(later.text.nodeValue, "2小时前", "a row added later is labelled on the same commit that mounts it");
+
+// The plugin's own write bounces back through the observer: it must stop there
+// rather than append a second suffix.
+ageObserver.deliver([{ type: "characterData", target: existing.text }]);
+assert.equal(existing.text.nodeValue, "55分钟前", "re-entering with the suffixed label changes nothing");
+
+// Locale switch: the suffix follows the dictionary, not a hard-coded 前.
+workspaceDict = WORKSPACE_EN;
+const english = fakeRow("55min");
+ageObserver.deliver([{ type: "childList", addedNodes: [english.row] }]);
+assert.equal(english.text.nodeValue, "55min ago", "the English row reads as an age too");
+assert.equal(existing.text.nodeValue, "55分钟前", "a row that has not re-rendered keeps its own locale's label");
+
+// Host without a MutationObserver (a non-browser harness) must not throw.
+globalThis.MutationObserver = void 0;
+assert.doesNotThrow(() => exportsOfBundle.apply(ageCtx), "a harness without MutationObserver is tolerated");
+
+const ageSource = await readFile(new URL("../lib/client.js", import.meta.url), "utf8");
+assert.match(ageSource, /ctx\.locale\.bind\("workspace"\)/, "the row copy is read from ui-workspace's namespace");
+assert.match(ageSource, /node\.nodeValue = next/, "the label is rewritten in place, so React keeps writing to a live node");
+assert.doesNotMatch(ageSource, /textContent = next/, "replacing the cell's children would detach the node React holds");
 
 console.log("render smoke: closed-state and open-state assertions passed");

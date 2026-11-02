@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Task Timer",
-    "description": "Show the session's agent working time as a clock-led pill in the conversation dashboard, with the time spent waiting for your answers already subtracted; open it for the span from session creation to its last activity and the excluded wait, and read the all-conversation total above the sidebar account row."
+    "description": "Show the session's agent working time as a clock-led pill in the conversation dashboard, with the time spent waiting for your answers already subtracted; open it for the span from session creation to its last activity and the excluded wait, read the all-conversation total above the sidebar account row, and see each session's age in the workspace list as \"55min ago\" instead of a runtime."
   }
 }
