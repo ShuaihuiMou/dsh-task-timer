@@ -87,8 +87,11 @@ DeepSeek Harness 插件：在对话最下方的仪表盘（composer dock）里�
     合计行仍为纯文字，不画图标。
   - 弹窗**不自己复刻样式**：运行时从 ui-chat 挂载的 `stat-dialog.module.css` 里读回它那套
     带哈希的类名（`.xxxx_panel` / `_title` / `_titleRule` / `_details`），直接应用到本弹窗，
-    因此背景、圆角、内边距、分割线、「N轮N步」弹窗与本弹窗**用的是同一份 CSS 规则**，
+    因此圆角、内边距、分割线、栅格、「N轮N步」弹窗与本弹窗**用的是同一份 CSS 规则**，
     不存在两套近似值；拿不到那份样式表时（不带 ui-chat 的装配）才退回内置的等价内联样式。
+     唯一不复用的一条是**底色**：内置弹窗用 `specific-menu` 半透明菜单膜 + 背景模糊，本卡片
+     更宽更高，那层膜会把背后的壁纸／皮肤／输入框渐隐透成一片渐变，所以这里固定用仪表盘卡片
+     同款的 `bg-layer-2` 实心底色，并显式 `backdrop-filter: none`。
 - **侧边栏合计**：向 `sidebar.footer.action` 注入一行 `1小时29分 · 对话总时长`，位置就在
   Settings／用户名行正上方；该行设了 `user-select: none`，鼠标划过不会把数字选进选区。
 
@@ -238,18 +241,23 @@ pill 必须读 `2分0秒 · 工作时长` 且不得出现 `9分0秒`；弹窗多
 
 | 项目 | 内置 `ActivityPill`/`UsagePill` | 本插件 |
 |------|-------------------------------|--------|
-| 字号/行高 | `12px / 18px` | 同 |
-| 高度 / 内边距 | `24px` / `0 8px` | 同（`gap 6px` 留给前面的时钟图标） |
-| 圆角 | `999px` + `corner-shape: round` | 同 |
-| 前景 / 底色 | `label-secondary` / `bg-layer-2` | 同 |
-| 悬停 / 展开态 | hover 与 `[aria-expanded=true]` 同为 `interactive-bg-hover`，文字保持 `label-secondary` | 同（并排选择器一次写死，展开不额外上一个"选中"底色） |
+| 字号/行高 | `12px / 20px` | 同 |
+| 高度 / 内边距 | `22px`（`1px 8px` 内边距 + 20px 行盒撑开，不写死 `height`）/ `1px 8px` | 同（`gap 6px` 留给前面的时钟图标） |
+| 圆角 | `var(--dsw-radius-sm)`（8px） | 同 |
+| 前景 / 底色 | `label-tertiary` / 无底色（`background: 0 0`） | 同（只有 hover / 展开态才上 `interactive-bg-hover`） |
+| 悬停 / 展开态 | hover 与 `[aria-expanded=true]` 同为 `interactive-bg-hover`，文字转为 `label-secondary` | 同（并排选择器一次写死，展开不额外上一个"选中"底色） |
 | 图标 | 每个 pill 一位 primitives 图标（activity 是仪表盘、usage 是数据库），尺寸由 `.pill svg { 14px }` 定 | 时钟 `IconClockOutlineRegular`，pill 与弹窗标题各一位；侧边栏合计行仍纯文字 |
-| 弹窗 | `pad 16`、`specific-menu` 面、12/18、6/16 明细栅格 | 同一个类名：运行时读回 ui-chat 的 `stat-dialog.module.css` 哈希类名后直接套用 |
+| 弹窗 | `pad 16`、`specific-menu` 面、12/18、6/16 明细栅格 | 布局与栅格同一个类名：运行时读回 ui-chat 的 `stat-dialog.module.css` 哈希类名后直接套用 |
+| 弹窗底色 | `specific-menu`（半透明菜单膜 + `menu-backdrop-filter` 背景模糊） | **不同**：改用 `bg-layer-2` 实心底色并关掉背景模糊。这张卡片比 token 那张更宽更高，半透明膜会把主题壁纸/海洋皮肤/输入框渐隐透成一片渐变，实心底才是一个基础色 |
 | 弹窗定位 | `useAnchoredPosition`，side top、gap 8、margin 12 | 同（复用同一 primitive） |
 | 标签文案顺序 | 数值在前、名称在后，`·` 分隔 | 同（`51分24秒 · 工作时长`） |
 
 因此 `lib/client.js` 不再手写坐标钳制、不手绘 SVG、也不用 `font: inherit`（那会把继承来的
 字号带进来，正是之前看起来"字体不一致"的原因）。
+
+> 底色这条曾经抄错：早期版本给它上了 `bg-layer-2` 实心底。默认亮色主题下 dock 本身也是白底，
+> 所以看不出来；换上海洋色这类半透明皮肤后，dock 透了、这颗 pill 仍然自带底色，就成了整排
+> 仪表盘里唯一一块不透明的色块。现在与内置 pill 一样 `background: 0 0`，只在 hover 时才有底色。
 
 ## 改动生效范围（排查用）
 

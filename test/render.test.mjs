@@ -121,7 +121,9 @@ assert.ok(registration.$$typeof, "registration is a memo-wrapped react component
 assert.equal(translations.namespace, "taskTimer");
 assert.equal(injected.length, 1, "one stylesheet mounted");
 assert.match(injected[0].textContent, /\[data-dsh-task-timer-pill\]/, "pill stylesheet scoped by attribute");
-assert.match(injected[0].textContent, /--dsw-alias-bg-layer-2/, "pill surface uses the layer-2 token");
+assert.match(injected[0].textContent, /background: 0 0;/, "pill paints no surface of its own, like the dashboard pills beside it");
+assert.doesNotMatch(injected[0].textContent, /--dsw-alias-bg-layer-2/, "an opaque layer token here would be the only filled chip in a translucent dock");
+assert.match(injected[0].textContent, /color: var\(--dsw-alias-label-tertiary\)/, "label colour matches the neighbouring pills");
 assert.match(injected[0].textContent, /\[aria-expanded="true"\][\s\S]*--dsw-alias-interactive-bg-hover/, "open state shares the hover fill");
 assert.doesNotMatch(injected[0].textContent, /button-ghost-active/, "open state avoids the ghost active fill used elsewhere");
 
@@ -169,13 +171,12 @@ const declarations = new Map(
 );
 
 // Parity with ui-chat `StatsPills.module.css` `.pill`.
-assert.equal(declarations.get("height"), "24px", "pill height matches the dashboard pills");
-assert.equal(declarations.get("padding"), "0 8px", "pill padding matches");
+assert.equal(declarations.get("padding"), "1px 8px", "pill padding matches the dashboard pills");
 assert.equal(declarations.get("gap"), "6px", "a 6px gap separates the leading glyph from the label");
-assert.equal(declarations.get("border-radius"), "999px", "pill is fully rounded, not radius-sm");
-assert.equal(declarations.get("corner-shape"), "round", "squircle corner shape matches");
+assert.equal(declarations.has("height"), false, "height comes from padding plus the line box, as in `.pill`");
+assert.equal(declarations.get("border-radius"), "var(--dsw-radius-sm)", "pill corners match the dashboard pills");
 assert.equal(declarations.get("font-size"), "12px", "pill text is 12px like its neighbours");
-assert.equal(declarations.get("line-height"), "18px", "pill line box is 18px like its neighbours");
+assert.equal(declarations.get("line-height"), "20px", "pill line box is 20px like its neighbours");
 assert.equal(declarations.get("font-weight"), "400", "pill text weight matches");
 assert.equal(declarations.get("white-space"), "nowrap");
 assert.equal(declarations.get("cursor"), "pointer");
@@ -311,6 +312,11 @@ const openHtml = renderToStaticMarkup(
 );
 
 assert.match(openHtml, /role="dialog"/, "trigger opens the detail dialog");
+assert.match(
+	openHtml,
+	/background:var\(--dsw-alias-bg-layer-2\)/,
+	"the fallback panel paints the same opaque base as the shared-class path"
+);
 assert.equal(
 	(openHtml.match(/<svg[^>]*data-icon="clock"/g) ?? []).length,
 	2,
@@ -551,11 +557,16 @@ assert.match(classHtml, /class="xXe6ja_panel"/, "the panel takes the built-in di
 assert.match(classHtml, /class="xXe6ja_title"/, "the title row shares the built-in rule");
 assert.match(classHtml, /class="xXe6ja_titleRule"/, "the separator shares the built-in rule");
 assert.match(classHtml, /class="xXe6ja_details"/, "the detail grid shares the built-in rule");
-assert.doesNotMatch(
+// The one property that is not shared: the surface film. Feeding it back as an
+// inline base keeps the card a single colour instead of letting whatever the
+// theme put behind the dock come through as a gradient.
+assert.match(
 	classHtml,
-	/specific-menu/,
-	"the copied inline surface steps aside once the shared class paints it"
+	/background:var\(--dsw-alias-bg-layer-2\)/,
+	"the panel pins the dashboard cards' opaque fill"
 );
+assert.match(classHtml, /backdrop-filter:none/, "the backdrop stays out of the card");
+assert.doesNotMatch(classHtml, /specific-menu/, "the translucent menu film is not painted here");
 assert.match(classHtml, /创建对话至今/, "the single detail row survives the swap");
 assert.match(classHtml, /30分0秒/);
 
