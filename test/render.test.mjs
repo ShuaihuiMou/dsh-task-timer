@@ -176,6 +176,9 @@ const t = (key, params = {}) => {
 		workingTime: () => `${params.duration} · 工作时长`,
 		title: () => "工作时长",
 		total: () => `${params.duration} · 对话总时长`,
+		totalTokens: () => `${params.count} · 对话总token`,
+		thousand: () => `${params.value}K`,
+		million: () => `${params.value}M`,
 		conversationAge: () => "创建对话至今",
 		awaitExcluded: () => "已扣除等待回答",
 		seconds: () => `${params.seconds}秒`,
@@ -448,12 +451,42 @@ assert.doesNotMatch(source, /<svg/, "no inline svg is shipped; the icon set owns
 const listState = (overrides = {}) => ({
 	ids: ["a", "b", "c"],
 	byId: {
-		a: { id: "a", projectionValues: { sessionStats: { llmMs: 3_600_000, toolMs: 0 } } },
-		b: { id: "b", projectionValues: { sessionStats: { llmMs: 1_200_000, toolMs: 600_000 } } },
+		a: {
+			id: "a",
+			projectionValues: {
+				sessionStats: { llmMs: 3_600_000, toolMs: 0 },
+				tokenUsage: {
+					uncachedInputTokens: 1_500_000,
+					outputTokens: 500_000,
+					cacheReadTokens: 1_000_000,
+					cacheWriteTokens: 0
+				}
+			}
+		},
+		b: {
+			id: "b",
+			projectionValues: {
+				sessionStats: { llmMs: 1_200_000, toolMs: 600_000 },
+				tokenUsage: {
+					uncachedInputTokens: 200_000,
+					outputTokens: 100_000,
+					cacheReadTokens: 0,
+					cacheWriteTokens: 0
+				}
+			}
+		},
 		c: {
 			id: "c",
 			origin: "subagent",
-			projectionValues: { sessionStats: { llmMs: 60_000, toolMs: 0 } }
+			projectionValues: {
+				sessionStats: { llmMs: 60_000, toolMs: 0 },
+				tokenUsage: {
+					uncachedInputTokens: 9_000_000,
+					outputTokens: 0,
+					cacheReadTokens: 0,
+					cacheWriteTokens: 0
+				}
+			}
 		}
 	},
 	projectionsBySession: {},
@@ -495,6 +528,44 @@ assert.equal(
 );
 assert.equal(totalDeclarations.get("user-select"), "none", "the caption cannot be dragged into a selection");
 assert.equal(totalDeclarations.get("-webkit-user-select"), "none", "the webkit prefix carries the same lock");
+
+// The token caption: same snapshot, second line, same compact scale as the
+// host's own usage pill.
+assert.match(
+	totalHtml,
+	/data-dsh-task-timer-total-tokens=""[\s\S]*3\.3M · 对话总token/,
+	"billed tokens sum into a value-first caption below the time"
+);
+assert.ok(
+	totalHtml.indexOf("对话总时长") < totalHtml.indexOf("对话总token"),
+	"tokens render under the working time, not above it"
+);
+assert.doesNotMatch(totalHtml, /9M|12M/, "the subagent row's tokens are excluded from the total");
+assert.equal(
+	(totalHtml.match(/data-dsh-task-timer-total-tokens=""/g) ?? []).length,
+	1,
+	"one token caption, not one per row"
+);
+assert.match(
+	renderTotal(
+		listState({
+			projectionsBySession: {
+				b: {
+					values: {
+						tokenUsage: {
+							uncachedInputTokens: 700_000,
+							outputTokens: 0,
+							cacheReadTokens: 0,
+							cacheWriteTokens: 0
+						}
+					}
+				}
+			}
+		})
+	),
+	/3\.7M · 对话总token/,
+	"a live row's tokens win over its cached snapshot"
+);
 
 // A live Session row overrides its colder checkpointed value.
 assert.match(
