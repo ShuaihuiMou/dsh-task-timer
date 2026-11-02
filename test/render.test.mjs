@@ -554,6 +554,10 @@ const classHtml = renderToStaticMarkup(
 );
 
 assert.match(classHtml, /class="xXe6ja_panel"/, "the panel takes the built-in dialog's own surface class");
+// Themes cannot tell this popover from its sibling 轮/步 and 上下文已用 cards by
+// class or role alone, so the card carries a hook a theme can use to keep this
+// one opaque while the others keep their glass.
+assert.match(classHtml, /data-dsh-task-timer-panel=""/, "the panel marks itself for theme-scoped fills");
 assert.match(classHtml, /class="xXe6ja_title"/, "the title row shares the built-in rule");
 assert.match(classHtml, /class="xXe6ja_titleRule"/, "the separator shares the built-in rule");
 assert.match(classHtml, /class="xXe6ja_details"/, "the detail grid shares the built-in rule");
