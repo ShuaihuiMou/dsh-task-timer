@@ -5,6 +5,8 @@
 // — when the conversation was created, and the newest event that moved it — plus
 // the one part of the dashboard's tool time that was really the user's: the
 // spans of calls that blocked until a human answered.
+// It also restores `sessionStats` to the Session-list summary keys, so the
+// sidebar total can sum every conversation instead of only attached ones.
 // These assertions pin the parts the registry depends on: `init` reads the
 // header, only conversation events move the cursor, only ask calls open a wait,
 // and `view` reuses its reference.
@@ -227,6 +229,36 @@ captured.stateSchema.parse(answered);
 assert.doesNotThrow(
 	() => captured.stateSchema.parse(secondAnswered),
 	"the persisted state keeps the open-wait map"
+);
+
+// DSH 0.2.2-rc.1 dropped `sessionStats` from the Session-list hints, so a cold
+// conversation's row had no working time and the sidebar total only counted
+// attached Sessions. The host side puts the key back into `summaryKeys()`;
+// the registry's stable set identity and the unload restore are both pinned.
+const registryProto = {
+	summaryKeys() {
+		return (this.summaryKeySet ??= this.deriveSummaryKeys());
+	}
+};
+const listRegistry = Object.create(registryProto);
+listRegistry.summaryKeySet = new Set(["taskTimer"]);
+listRegistry.deriveSummaryKeys = () => new Set(["taskTimer"]);
+listRegistry.register = () => {};
+let restoreListColumn = () => {};
+apply({
+	sessionProjections: listRegistry,
+	effect(fn) {
+		restoreListColumn = fn();
+	}
+});
+const listKeys = listRegistry.summaryKeys();
+assert.ok(listKeys.has("sessionStats"), "sessionStats is served to the Session list again");
+assert.equal(listRegistry.summaryKeys(), listKeys, "the stable summary set identity is preserved");
+restoreListColumn();
+assert.equal(
+	listRegistry.summaryKeys().has("sessionStats"),
+	false,
+	"unloading restores the host's own summary key set"
 );
 
 console.log(
