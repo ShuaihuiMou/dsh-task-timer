@@ -1,6 +1,6 @@
 {
   "name": "dsh-task-timer",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "description": "DeepSeek Harness plugin: a clock-led per-session working-time pill that subtracts the time spent waiting for your answers, whose dialog shows the span from the conversation's first message to its last activity (capped, so idle time never accrues), the all-conversation total above the sidebar account row with their token total right below it, and a \"55min ago\" reading on each workspace session row instead of a bare distance",
   "type": "module",
   "engines": {

@@ -184,7 +184,11 @@ const t = (key, params = {}) => {
 		seconds: () => `${params.seconds}秒`,
 		minutes: () => `${params.minutes}分${params.seconds}秒`,
 		hours: () => `${params.hours}小时`,
-		hoursMinutes: () => `${params.hours}小时${params.minutes}分`
+		hoursMinutes: () => `${params.hours}小时${params.minutes}分`,
+		days: () => `${params.days}天`,
+		daysHours: () => `${params.days}天${params.hours}小时`,
+		years: () => `${params.years}年`,
+		yearsDays: () => `${params.years}年${params.days}天`
 	}[key];
 	return template === void 0 ? key : template();
 };
@@ -268,6 +272,20 @@ assert.match(label(3_600_000), /1小时 · 工作时长/, "exactly 60 minutes be
 assert.match(label(5_340_000), /1小时29分 · 工作时长/, "past the hour the seconds are dropped");
 assert.doesNotMatch(label(5_340_000), /89分/, "minutes never overflow past 59");
 assert.doesNotMatch(label(5_340_000), /秒/, "no seconds once hours are shown");
+
+// Past a day the hours stop piling up: 100 hours reads as 4天4小时, not
+// 100小时. Months are skipped entirely (30/31 days make the unit ambiguous),
+// and 365 days becomes a year.
+const DAY = 86_400_000;
+assert.match(label(DAY), /1天 · 工作时长/, "exactly 24 hours is one day, not 24小时");
+assert.match(label(100 * 3_600_000), /4天4小时 · 工作时长/, "100 hours widens into days and hours");
+assert.doesNotMatch(label(100 * 3_600_000), /100小时/, "hours never overflow past 23 once days appear");
+assert.doesNotMatch(label(100 * 3_600_000), /月/, "months are never used as a unit");
+assert.match(label(365 * DAY), /1年 · 工作时长/, "365 days is exactly one year");
+assert.match(label(366 * DAY), /1年1天 · 工作时长/, "a year keeps the leftover days");
+assert.match(label(400 * DAY), /1年35天 · 工作时长/, "years widen with a day remainder");
+assert.match(label(730 * DAY), /2年 · 工作时长/, "whole years drop the zero day remainder");
+assert.doesNotMatch(label(400 * DAY), /月/, "no month unit at the year level either");
 
 // Time spent waiting on an answer is not work. `sessionStats` bills a question's
 // whole call→result span as tool time, so the host publishes that share as
@@ -407,6 +425,43 @@ const lateStartHtml = renderToStaticMarkup(
 );
 assert.match(lateStartHtml, /30分0秒/, "the age runs from the first message, not the record");
 assert.doesNotMatch(lateStartHtml, /4小时16分/, "the idle hours before the first message are not counted");
+
+// The dialog's "创建对话至今" span runs through the same formatter: 100+
+// hours widen into days, and a year-long span into years and days. Months
+// (30/31 days) are never a unit here either.
+useStateCalls = 0;
+const longAgeHtml = renderToStaticMarkup(
+	react.createElement(registration, {
+		useProjection: (key) =>
+			key === "taskTimer"
+				? {
+					createdAt: NOW - 100 * 3_600_000,
+					startedAt: NOW - 100 * 3_600_000,
+					lastActivityAt: NOW
+				}
+				: projections[key],
+		t
+	})
+);
+assert.match(longAgeHtml, /4天4小时/, "the dialog age widens past a day");
+assert.doesNotMatch(longAgeHtml, /100小时|月/, "the dialog never prints 100小时 or a month unit");
+
+useStateCalls = 0;
+const yearAgeHtml = renderToStaticMarkup(
+	react.createElement(registration, {
+		useProjection: (key) =>
+			key === "taskTimer"
+				? {
+					createdAt: NOW - 400 * 86_400_000,
+					startedAt: NOW - 400 * 86_400_000,
+					lastActivityAt: NOW
+				}
+				: projections[key],
+		t
+	})
+);
+assert.match(yearAgeHtml, /1年35天/, "a 400-day age reads as years and days");
+assert.doesNotMatch(yearAgeHtml, /400天|月/, "no bare 400天 and no month unit");
 
 // The dialog names the deduction, so the smaller pill explains itself instead of
 // quietly disagreeing with the dashboard's activity numbers.
