@@ -49,11 +49,9 @@
       "versions": [
         {
           "version": "1.6.2",
-          "publishTimestamp": 1793972319,
+          "publishTimestamp": 1794022192,
           "source": {
-            "type": "git",
-            "url": "https://gitee.com/sunxiaochuan2588000/dsh-task-timer",
-            "commit": "af83f1c0bd14ab6097a7f9f1e5a87ad87b50071f"
+            "type": "npm"
           },
           "engines": {
             "dsh": ">=0.2.1-rc.5"

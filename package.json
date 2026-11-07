@@ -46,11 +46,11 @@
   "author": "牟浪松",
   "repository": {
     "type": "git",
-    "url": "git+https://gitee.com/sunxiaochuan2588000/dsh-task-timer.git"
+    "url": "git+https://github.com/ShuaihuiMou/dsh-task-timer.git"
   },
-  "homepage": "https://gitee.com/sunxiaochuan2588000/dsh-task-timer#readme",
+  "homepage": "https://github.com/ShuaihuiMou/dsh-task-timer#readme",
   "bugs": {
-    "url": "https://gitee.com/sunxiaochuan2588000/dsh-task-timer/issues"
+    "url": "https://github.com/ShuaihuiMou/dsh-task-timer/issues"
   },
   "license": "MIT",
   "dependencies": {

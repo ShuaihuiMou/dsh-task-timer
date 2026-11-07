@@ -188,8 +188,14 @@ dsh-task-timer/
 
 ## 安装
 
-从公开仓库安装（`<dsh>` 指 DSH 安装目录下 `resources/runtime/cli/bin/dsh.cmd`，若已加进 PATH
-则直接写 `dsh`）：
+已发布到 npm，首选这条（`<dsh>` 指 DSH 安装目录下 `resources/runtime/cli/bin/dsh.cmd`，若已加进
+PATH 则直接写 `dsh`）：
+
+```powershell
+& "<dsh>" plugin --profile desktop add dsh-task-timer
+```
+
+也可以改从公开仓库装源码：
 
 ```powershell
 & "<dsh>" plugin --profile desktop add github:ShuaihuiMou/dsh-task-timer
@@ -208,7 +214,7 @@ GitHub 与 Gitee 是同一份代码，直连 Gitee 等价：
 & "<dsh>" plugin --profile desktop add "github:ShuaihuiMou/dsh-task-timer#d9d7fc0e2c5f49f71e671927e8d416e24390d3a8"
 ```
 
-npm 上还没有这个包（尚未发布），等发布后 `add dsh-task-timer` 也等价。
+npm 上已有同名包，`add dsh-task-timer` 走的是打包好的 release，不必 clone，也就不用锁 SHA。
 
 调试本地源码时用 `link:` 装法，改动即时可见，不必重装；`file:`（不加 `link:` 前缀）则会把包
 拷贝进 profile。在插件目录双击/运行 `install.ps1`，或手动执行：
